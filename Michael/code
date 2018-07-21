@@ -1,1 +1,70 @@
-#insert here
+class Card:
+    def __init__(self, n, c):
+        self.number = n
+        self.color = c
+        
+class Deck:
+    def __init__(self):
+        self.deck = [None] * 50
+        
+    def fill(self):
+        count = 0
+        for n in range(1, 6):
+            for c in ['w', 'g', 'r', 'y', 'b']:
+                self.deck[count] = Card(n, c)
+                count += 1
+                if 1 < n < 5:
+                    self.deck[count] = Card(n, c)
+                    count += 1
+                elif n == 1:
+                    self.deck[count] = Card(n, c)
+                    self.deck[count + 1] = Card(n, c)
+                    count += 2
+        
+    def shuffle(self):
+        random.shuffle(self.deck)
+        
+    def remove(self, pos):
+        return self.deck.pop(pos)
+        
+    def add(self, card):
+        self.deck.append(card)
+        
+class Player:
+    def __init__(self, n):
+        self.name = n
+        self.hand = [None] * 4
+        
+    def updateHand(self, card, pos):
+        self.hand[pos] = card
+        
+    def cardInHand(self, pos):
+        return self.hand[pos]
+        
+    def hand(self):
+        h = ''
+        for i in hand:
+            h += i.color + str(i.number) + ', '
+        return h[:len(h) - 2]
+        
+class Board:
+    def __init__(self):
+        self.deck = Deck()
+        self.deck.fill()
+        self.deck.shuffle()
+        self.discard = Deck()
+        self.piles = [None] * 5
+        
+
+class Game:
+    def __init__(self, players):
+        board = Board()
+        self.turn = 0
+        self.players = [Player(p) for p in players]
+
+    def playTurn(self):
+        print(self.players[self.turn % len(self.players)], 'it is your turn!')
+        for i in range(1, len(self.players)):
+            print(self.players[(self.turn + 1i % len(self.players)] + "'s hand:", self.players.hand())
+        print('What will you do?')
+        
