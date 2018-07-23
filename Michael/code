@@ -1,3 +1,7 @@
+#Fully functional console-based game
+
+import random
+
 class Card:
     def __init__(self, n, c):
         self.number = n
@@ -24,26 +28,38 @@ class Deck:
     def shuffle(self):
         random.shuffle(self.deck)
         
-    def remove(self, pos):
-        return self.deck.pop(pos)
+    def remove(self):
+        return self.deck.pop()
         
     def add(self, card):
         self.deck.append(card)
+        
+    def occurrencesOf(self, n, c):
+        count = 0
+        for d in self.deck:
+            if d != None and d.color == c and d.number == n:
+                count += 1
+        return count
         
 class Player:
     def __init__(self, n):
         self.name = n
         self.hand = [None] * 4
         
-    def updateHand(self, card, pos):
-        self.hand[pos] = card
+    def addToHand(self, card):
+        self.hand[self.hand.index(None)] = card
         
     def cardInHand(self, pos):
         return self.hand[pos]
         
-    def hand(self):
+    def removeCard(self, pos):
+        x = self.hand[pos]
+        self.hand[pos] = None
+        return x
+        
+    def displayHand(self):
         h = ''
-        for i in hand:
+        for i in self.hand:
             h += i.color + str(i.number) + ', '
         return h[:len(h) - 2]
         
@@ -55,16 +71,110 @@ class Board:
         self.discard = Deck()
         self.piles = [None] * 5
         
+    def addToPile(self, card):
+        for p in range(0, len(self.piles)):
+            if self.piles[p] != None and card.color == self.piles[p].color and card.number == self.piles[p].number + 1:
+                self.piles[p] = card
+                return True
+            elif self.piles[p] != None and card.color == self.piles[p].color and card.number == 1 and self.piles[p].number == 1:
+                return False
+            elif self.piles[p] == None and card.number == 1:
+                self.piles[p] = card
+                return True
+        return False        
+            
+    def displayBoard(self):
+        b = ''
+        for i in self.piles:
+            b += (i.color + str(i.number) + ', ') if i != None else '//, '
+        return b[:len(b) - 2]
+        
+    def displayDiscardPile(self):
+        d = ''
+        for i in self.discard.deck:
+            d += i.color + str(i.number) + ', ' if i != None else ''
+        return d[:len(d) - 2] if d != '' else 'empty'
+        
 
 class Game:
     def __init__(self, players):
-        board = Board()
+        self.board = Board()
         self.turn = 0
-        self.players = [Player(p) for p in players]
+        self.players = [None] * len(players)
+        self.lives = 3
+        for i in range(0, len(players)):
+            self.players[i] = Player(players[i])
+            
+    def dealCards(self):
+        for p in range(0, len(self.players)):
+            for c in range(0, 4):
+                self.players[p].addToHand(self.board.deck.remove())
+
+    def findOptimalHints(self):
+        plays = []
+        discards = []
+        next = self.players[(self.turn + 1) % len(self.players)]
+        for c in next.hand:
+            for p in self.board.piles:
+                if p == None and c.number == 1:
+                    plays.append('Tell ' + next.name + ' to play card ' + str(next.hand.index(c) + 1))
+                    break
+                elif p != None and c.color == p.color and c.number == p.number + 1:
+                    plays.append('Tell ' + next.name + ' to play card ' + str(next.hand.index(c) + 1))
+                    break
+            for d in self.board.discard.deck:
+                if c.number == 1 and self.board.discard.occurrencesOf(c.color, c.number) < 2:
+                    discards.append('Tell ' + next.name + ' to discard card ' + str(next.hand.index(c) + 1))
+                    break
+                elif (c.number == 2 or c.number == 3 or c.number == 4) and self.board.discard.occurrencesOf(c.color, c.number) < 1:
+                    discards.append('Tell ' + next.name + ' to discard card ' + str(next.hand.index(c) + 1))
+                    break
+        plays.extend(discards)
+        return plays
+            
+    def turnPlayer(self, additional):
+        return self.players[(self.turn + additional) % len(self.players)]
 
     def playTurn(self):
-        print(self.players[self.turn % len(self.players)], 'it is your turn!')
-        for i in range(1, len(self.players)):
-            print(self.players[(self.turn + 1i % len(self.players)] + "'s hand:", self.players.hand())
-        print('What will you do?')
+        print(self.turnPlayer(0).name +  ", it's your turn!")
+        for i in range(0, len(self.players) - 1):
+            print(self.turnPlayer(i + 1).name + "'s hand: " + self.turnPlayer(i + 1).displayHand())
+        print('The board is: ' + self.board.displayBoard())
+        print('The discard pile is: ' + self.board.displayDiscardPile())
+        print('You have ' + str(self.lives) + ' lives left!')
+        print('Your possible actions are: ')
+        for p in range(1, 5):
+            print('- Play card ' + str(p) + ' (p ' + str(p) + ')')
+            print('- Discard card ' + str(p) + ' (x ' + str(p) + ')')
+        print('Your optimal hints are: ')
+        plays = self.findOptimalHints()
+        for p in range(0, len(plays)):
+            print('- ' + plays[p] + ' (h ' + str(p + 1) + ')')
+        command = input('What will you do? ')
+        command = command.split(' ')
+        inputAction = command[0]
+        inputNum = int(command[1]) - 1
+        if inputAction == 'h':
+            print('Hint to ' + self.turnPlayer(1 + int(plays[inputNum][len(plays[inputNum]) - 1:])).name + " about their cards' " + ('color' if 'play' in plays[inputNum] else 'number'))
+        elif inputAction == 'x':
+            self.board.discard.add(self.turnPlayer(0).removeCard(inputNum))
+            self.turnPlayer(0).addToHand(self.board.deck.remove())
+        else: 
+            card = self.turnPlayer(0).removeCard(inputNum)
+            if self.board.addToPile(card):
+                print('Added!')
+                self.turnPlayer(0).addToHand(self.board.deck.remove())
+            else:
+                print('You fucked up!')
+                self.board.discard.add(card)
+                self.turnPlayer(0).addToHand(self.board.deck.remove())
+                self.lives -= 1
+        self.turn += 1
         
+    def start(self):
+        self.dealCards()
+        while(self.lives > 0):
+            self.playTurn()
+            
+g = Game(['Michael', 'Ayo', 'Gabriel', 'Gustavo', 'Dani', 'Chenyi', 'Jose', 'Julia'])
+g.start()
